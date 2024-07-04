@@ -1,68 +1,52 @@
 apiVersion: v1
 kind: Service
-metadata:
- name: wordpress-mysql
- labels:
-  app: wordpress
-spec:
- ports:
- - port: 3306
- selector:
-  app: wordpress
-  tier: mysql
- type: ClusterIP
- clusterIP: None
- 
- ---
-apiVersion: apps/v1
-kind: Deployment
 metadata: 
- name: wordpress-mysql
- labels: 
-  app: wordpress
+  name: mysql-svc
+  namespace: test-ns
 spec:
- selector: 
-  matchLabels: 
-   app: wordpress
-   tier: mysql
- strategy: 
-  type: Recreate
- template:
-  metadata:
-   labels:
-    app: wordpress
-    tier: mysql
- spec:
-  volumes:
-  - name: mysql-persistent-storage
-    persistentVolumeClaim:
-     claimName: mysql-pv-claim
-  containers:
-  - name: mysql
-    image: mysql:latest
-    env: 
-    - name: MYSQL_ROOT_PASSWORD
-      valueFrom:
-       secretKeyRef:
-        name: mysql-pass
-        key: password
-    ports:
-     containerPort: 3306
-     name: mysql
-    volumeMounts:
-    - name: mysql-persistent-storage
-      mountPath: /var/lib/mysql
+  clusterIP: None 
+  selector:
+    app: mysqldb
+  ports:
+  - port: 3306
+    targetPort: 3306
 ---
-apiVersion: v1
-kind: PersistentVolumeClaim
+apiVersion: apps/v1
+kind: StatefulSet
 metadata: 
- name: mysql-pv-claim
- labels: 
-  app: wordpress
+  name: mysqldb-statefulset
+  namespace: test-ns
 spec:
- accessModes:
- - ReadWriteOnce
- resources:
-  requests:
-   storage: 20Gi
- 
+  selector:
+    matchLabels:
+      app: mysqldb
+  serviceName: mysql-svc
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: mysqldb
+    spec:
+      containers:
+      - name: mysql
+        image: mysql:latest
+        ports:
+        - containerPort: 3306
+        volumeMounts: 
+        - name: mysqlvol
+          mountPath: /var/lib/mysql
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mysql-pass
+              key: password
+  volumeClaimTemplates:
+  - metadata:
+      name: mysqlvol
+    spec: 
+      accessModes: 
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: 1Gi
