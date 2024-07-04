@@ -6,13 +6,12 @@ metadata:
  labels: 
   app: wordpress
 spec: 
- selector:
+replicas: 3
+selector:
   matchLabels:
    app: wordpress
    tier: frontend
- strategy:
-  type: Recreate
- template:
+template:
   metadata:
    labels: 
     app: wordpress
